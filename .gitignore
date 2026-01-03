@@ -1,0 +1,42 @@
+# Environment and secrets
+.env
+*.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (may contain trading history)
+trades.json
+trade_log.json
+backtest_results.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Claude Code
+.claude/
+
+# Backtest result files
+backtest_*_results.json
+backtest_*_baseline.json
+
+# Accidental files
+nul
