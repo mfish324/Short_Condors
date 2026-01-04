@@ -95,7 +95,7 @@ def run_all_backtests(
             if verbose:
                 print(f"  Completed in {elapsed:.1f}s")
                 print(f"  Trades: {result.total_trades}, P&L: ${result.total_pnl:.2f}")
-                print(f"  OTM Rate: {result.otm_rate:.1%}, Win Rate: {result.win_rate:.1%}")
+                print(f"  OTM Rate: {result.otm_probability:.1%}, Avg IV: {result.avg_iv:.1%}")
 
         except Exception as e:
             print(f"  ERROR: {e}")
@@ -121,19 +121,32 @@ def save_results(results: dict[str, BacktestResult], filename: str = RESULTS_FIL
 
     for symbol, result in results.items():
         if result:
+            # Calculate additional stats from trades
+            pnls = [t.get("pnl", 0) for t in result.trades]
+            wins = sum(1 for p in pnls if p > 0)
+            win_rate = wins / len(pnls) if pnls else 0
+            max_loss = min(pnls) if pnls else 0
+            max_win = max(pnls) if pnls else 0
+
+            call_trades = [t for t in result.trades if t.get("option_type") == "call"]
+            put_trades = [t for t in result.trades if t.get("option_type") == "put"]
+            call_pnl = sum(t.get("pnl", 0) for t in call_trades)
+            put_pnl = sum(t.get("pnl", 0) for t in put_trades)
+
             data["results"][symbol] = {
                 "total_trades": result.total_trades,
                 "total_pnl": round(result.total_pnl, 2),
-                "win_rate": round(result.win_rate, 4),
-                "otm_rate": round(result.otm_rate, 4),
+                "win_rate": round(win_rate, 4),
+                "otm_rate": round(result.otm_probability, 4),
                 "avg_iv": round(result.avg_iv, 4),
-                "avg_premium": round(result.avg_premium, 2),
-                "max_loss": round(result.max_loss, 2),
-                "max_win": round(result.max_win, 2),
-                "call_trades": result.call_trades,
-                "put_trades": result.put_trades,
-                "call_pnl": round(result.call_pnl, 2),
-                "put_pnl": round(result.put_pnl, 2),
+                "avg_premium": round(result.avg_premium_collected, 2),
+                "avg_delta": round(result.avg_delta, 4),
+                "max_loss": round(max_loss, 2),
+                "max_win": round(max_win, 2),
+                "call_trades": len(call_trades),
+                "put_trades": len(put_trades),
+                "call_pnl": round(call_pnl, 2),
+                "put_pnl": round(put_pnl, 2),
             }
         else:
             data["results"][symbol] = {"error": "Backtest failed"}
@@ -149,7 +162,7 @@ def print_summary(results: dict[str, BacktestResult]):
     print("\n" + "=" * 90)
     print("BACKTEST SUMMARY")
     print("=" * 90)
-    print(f"{'Symbol':<8} {'Trades':>7} {'P&L':>12} {'Win%':>8} {'OTM%':>8} {'Avg IV':>8} {'Max Loss':>10}")
+    print(f"{'Symbol':<8} {'Trades':>7} {'P&L':>12} {'OTM%':>8} {'Avg IV':>8} {'Avg Prem':>10}")
     print("-" * 90)
 
     total_trades = 0
@@ -164,8 +177,8 @@ def print_summary(results: dict[str, BacktestResult]):
 
     for symbol, result in sorted_results:
         print(f"{symbol:<8} {result.total_trades:>7} ${result.total_pnl:>10,.2f} "
-              f"{result.win_rate:>7.1%} {result.otm_rate:>7.1%} "
-              f"{result.avg_iv:>7.1%} ${result.max_loss:>9,.2f}")
+              f"{result.otm_probability:>7.1%} "
+              f"{result.avg_iv:>7.1%} ${result.avg_premium_collected:>9,.2f}")
         total_trades += result.total_trades
         total_pnl += result.total_pnl
 
